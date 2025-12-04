@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MC-repair-history (機械維修記錄)</title>
+    <title>MC-repair-history (設備維修記錄)</title>
     <style>
         :root {
             --primary-color: #007bff;
@@ -158,92 +158,88 @@
         .anim-purple { animation: flash-purple 1s infinite; }
         .anim-green { animation: flash-green 2s infinite; }
 
-        .voice-controls { margin-top: 10px; }
-        
-        .quick-lang-container {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 10px;
-        }
-        .lang-icon { font-size: 1.2em; margin-right: 5px; }
-        .small-select {
-            padding: 4px 8px; border: 1px solid #ccc; border-radius: 15px; 
-            font-size: 0.8rem; background-color: #fff; color: #555; outline: none;
-        }
-
-        /* --- 修改後的語音按鈕區域 (正方形靠左) --- */
-        .voice-action-area {
-            display: flex;
-            align-items: center;
+        /* --- 新版控制區塊 Layout --- */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 左右兩個大格子 */
             gap: 15px;
+            margin-top: 15px;
         }
 
-        .btn-voice { 
-            width: 100px; /* 固定寬度 */
-            height: 100px; /* 固定高度，正方形 */
+        .btn-square-lg { 
+            width: 100%; 
+            aspect-ratio: 1/1; /* 強制正方形 */
             padding: 5px; 
             border: none; border-radius: 12px; 
-            background-color: #17a2b8; color: white; font-weight: bold; cursor: pointer;
+            color: white; font-weight: bold; cursor: pointer;
             display: flex; 
-            flex-direction: column; /* 垂直排列圖示與文字 */
+            flex-direction: column; 
             justify-content: center; 
             align-items: center; 
             gap: 5px;
-            flex-shrink: 0; /* 防止被擠壓 */
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.1s;
         }
-        
-        .voice-icon-large { font-size: 32px; display: block; }
-        .voice-text { font-size: 14px; line-height: 1.2; }
+        .btn-square-lg:active { transform: scale(0.98); }
 
-        .btn-voice.recording { background-color: var(--danger-color); animation: pulse 1s infinite; }
+        .btn-copy-lg { background-color: #28a745; }
+        .btn-voice-lg { background-color: #17a2b8; }
+        .btn-voice-lg.recording { background-color: var(--danger-color); animation: pulse 1s infinite; }
         
-        .voice-timer-display {
-            font-size: 1rem; color: #555; font-weight: bold;
-            display: flex; flex-direction: column;
+        .icon-lg { font-size: 2.5rem; display: block; margin-bottom: 5px; }
+        .text-sm { font-size: 1rem; line-height: 1.2; text-align: center; }
+
+        /* --- 下方資訊列 (語言 & 時間) --- */
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding: 0 5px;
         }
 
-        /* 複製按鈕樣式 */
-        .btn-copy {
-            background-color: #28a745; 
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 6px 15px;
-            font-weight: bold;
-            cursor: pointer;
+        .info-group {
             display: flex;
             align-items: center;
-            gap: 5px;
-            font-size: 0.9rem;
+            gap: 6px;
+            color: #555;
+            font-size: 0.95rem;
+            font-weight: bold;
         }
 
-        /* --- 修改後的底部按鈕區域 (正方形，2個一排) --- */
+        .small-select {
+            padding: 5px 10px; border: 1px solid #ccc; border-radius: 20px; 
+            font-size: 0.85rem; background-color: #fff; color: #555; outline: none;
+        }
+
+        /* --- 底部按鈕區域 (Grid 2個一排) --- */
         .footer-btns { 
-            display: grid; /* 使用 Grid 佈局 */
-            grid-template-columns: 1fr 1fr; /* 兩列等寬 */
-            gap: 15px; /* 按鈕間距 */
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px; 
             margin-top: 20px; 
             padding-bottom: 30px;
         }
         
         .btn-main { 
             width: 100%; 
-            aspect-ratio: 1 / 1; /* 強制正方形比例 */
+            aspect-ratio: 1 / 1; 
             padding: 10px; 
             border: none; 
             border-radius: 16px; 
-            font-size: 1.2rem; /* 加大字體 */
+            font-size: 1.2rem; 
             font-weight: bold; 
             cursor: pointer; 
             color: white; 
             display: flex;
-            flex-direction: column; /* 垂直排列內容 */
+            flex-direction: column; 
             justify-content: center;
             align-items: center;
             text-align: center;
             line-height: 1.3;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
+        .btn-main:active { opacity: 0.9; }
         
         .btn-icon-big { font-size: 2.5rem; margin-bottom: 8px; display: block; }
 
@@ -324,36 +320,34 @@
             <span class="section-title">2. Note (文字/語音)</span>
             <textarea id="noteInput" placeholder="After taking a photo, type here or use voice... (拍照後，在此輸入或使用語音)"></textarea>
             
-            <div class="voice-controls">
-                
-                <div class="quick-lang-container">
-                    <button class="btn-copy" onclick="copyNote()" title="Copy Note Content">📋 Copy Note</button>
-                    <div style="display:flex; align-items: center;">
-                        <span class="lang-icon">🌐</span>
-                        <select id="main-lang" class="small-select" onchange="syncLanguage('main')">
-                            <option value="cmn-Hant-TW">中文 (繁體)</option>
-                            <option value="en-US">English</option>
-                            <option value="ja-JP">日本語</option>
-                            <option value="hi-IN">हिन्दी (Hindi)</option>
-                        </select>
-                    </div>
+            <div class="controls-grid">
+                <button class="btn-square-lg btn-copy-lg" onclick="copyNote()">
+                    <span class="icon-lg">📋</span>
+                    <span class="text-sm">Copy Note<br>(複製)</span>
+                </button>
+
+                <button class="btn-square-lg btn-voice-lg" id="voiceBtn" onclick="toggleVoice()">
+                    <span class="icon-lg" id="voiceIcon">🎤</span>
+                    <span class="text-sm" id="voiceText">Start Voice<br>(錄音)</span>
+                </button>
+            </div>
+
+            <div class="info-row">
+                <div class="info-group">
+                    <span>🌐</span>
+                    <select id="main-lang" class="small-select" onchange="syncLanguage('main')">
+                        <option value="cmn-Hant-TW">中文 (繁體)</option>
+                        <option value="en-US">English</option>
+                        <option value="ja-JP">日本語</option>
+                        <option value="hi-IN">हिन्दी (Hindi)</option>
+                    </select>
                 </div>
 
-                <div class="voice-action-area">
-                    <button type="button" class="btn-voice" id="voiceBtn" onclick="toggleVoice()">
-                        <span class="voice-icon-large" id="voiceIcon">🎤</span>
-                        <span class="voice-text" id="voiceText">Start<br>Voice</span>
-                    </button>
-                    
-                    <div class="voice-timer-display">
-                        <span style="font-size:0.8rem; color:#888;">Time Left:</span>
-                        <span style="color:#d63384; font-size:1.8rem; line-height:1.2;">
-                            <span id="display-timeout">10</span>s
-                        </span>
-                        <span id="recording-status-text" style="font-size:0.8rem; color:var(--danger-color); display:none;">Recording...</span>
-                    </div>
+                <div class="info-group">
+                    <span style="font-size:0.85rem;">Time Left:</span>
+                    <span id="display-timeout" style="color:#d63384; font-size:1.2rem;">10</span>s
+                    <span id="recording-status-text" style="font-size:0.8rem; color:var(--danger-color); display:none; margin-left:5px;">● REC</span>
                 </div>
-
             </div>
         </div>
 
@@ -674,8 +668,8 @@
         const vBtn = document.getElementById('voiceBtn');
         vBtn.classList.add('recording');
         document.getElementById('voiceIcon').innerText = "🛑";
-        document.getElementById('voiceText').innerHTML = "Stop<br>Voice";
-        document.getElementById('recording-status-text').style.display = "block";
+        document.getElementById('voiceText').innerHTML = "Stop Voice<br>(停止)";
+        document.getElementById('recording-status-text').style.display = "inline";
         
         // 建立快照
         snapshotText = document.getElementById('noteInput').value;
@@ -782,7 +776,7 @@
         const vBtn = document.getElementById('voiceBtn');
         vBtn.classList.remove('recording');
         document.getElementById('voiceIcon').innerText = "🎤";
-        document.getElementById('voiceText').innerHTML = "Start<br>Voice";
+        document.getElementById('voiceText').innerHTML = "Start Voice<br>(錄音)";
         document.getElementById('recording-status-text').style.display = "none";
         
         const noteInput = document.getElementById('noteInput');
