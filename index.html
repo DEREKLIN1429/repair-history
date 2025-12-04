@@ -162,7 +162,7 @@
         
         .quick-lang-container {
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
         }
         .lang-icon { font-size: 1.2em; margin-right: 5px; }
         .small-select {
@@ -170,32 +170,83 @@
             font-size: 0.8rem; background-color: #fff; color: #555; outline: none;
         }
 
-        .btn-voice { 
-            width: 100%; padding: 12px; border: none; border-radius: 8px; 
-            background-color: #17a2b8; color: white; font-weight: bold; cursor: pointer;
-            display: flex; justify-content: center; align-items: center; gap: 8px;
-            margin-bottom: 10px;
+        /* --- 修改後的語音按鈕區域 (正方形靠左) --- */
+        .voice-action-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
-        .btn-voice.recording { background-color: var(--danger-color); animation: pulse 1s infinite; }
 
-        /* 新增：複製按鈕樣式 */
+        .btn-voice { 
+            width: 100px; /* 固定寬度 */
+            height: 100px; /* 固定高度，正方形 */
+            padding: 5px; 
+            border: none; border-radius: 12px; 
+            background-color: #17a2b8; color: white; font-weight: bold; cursor: pointer;
+            display: flex; 
+            flex-direction: column; /* 垂直排列圖示與文字 */
+            justify-content: center; 
+            align-items: center; 
+            gap: 5px;
+            flex-shrink: 0; /* 防止被擠壓 */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .voice-icon-large { font-size: 32px; display: block; }
+        .voice-text { font-size: 14px; line-height: 1.2; }
+
+        .btn-voice.recording { background-color: var(--danger-color); animation: pulse 1s infinite; }
+        
+        .voice-timer-display {
+            font-size: 1rem; color: #555; font-weight: bold;
+            display: flex; flex-direction: column;
+        }
+
+        /* 複製按鈕樣式 */
         .btn-copy {
             background-color: #28a745; 
             color: white;
             border: none;
             border-radius: 8px;
-            padding: 10px;
+            padding: 6px 15px;
             font-weight: bold;
             cursor: pointer;
-            width: 100%;
             display: flex;
-            justify-content: center;
             align-items: center;
-            gap: 8px;
+            gap: 5px;
+            font-size: 0.9rem;
         }
 
-        .footer-btns { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; padding-bottom: 30px;}
-        .btn-main { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; }
+        /* --- 修改後的底部按鈕區域 (正方形，2個一排) --- */
+        .footer-btns { 
+            display: grid; /* 使用 Grid 佈局 */
+            grid-template-columns: 1fr 1fr; /* 兩列等寬 */
+            gap: 15px; /* 按鈕間距 */
+            margin-top: 20px; 
+            padding-bottom: 30px;
+        }
+        
+        .btn-main { 
+            width: 100%; 
+            aspect-ratio: 1 / 1; /* 強制正方形比例 */
+            padding: 10px; 
+            border: none; 
+            border-radius: 16px; 
+            font-size: 1.2rem; /* 加大字體 */
+            font-weight: bold; 
+            cursor: pointer; 
+            color: white; 
+            display: flex;
+            flex-direction: column; /* 垂直排列內容 */
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            line-height: 1.3;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .btn-icon-big { font-size: 2.5rem; margin-bottom: 8px; display: block; }
+
         .btn-save { background-color: var(--primary-color); }
         .btn-view { background-color: #6c757d; }
         .btn-drive { background-color: var(--drive-color); }
@@ -227,7 +278,7 @@
             <h3>🔒 Login (登入)</h3>
             <p style="color:#666; font-size:0.9em;">Please enter password<br>(請輸入密碼)</p>
             <input type="password" id="loginPass" class="login-input" placeholder="Password">
-            <button class="btn-main btn-save" onclick="checkLogin()">Login (進入)</button>
+            <button class="btn-main btn-save" style="aspect-ratio: auto; height: 50px; font-size: 1rem;" onclick="checkLogin()">Login (進入)</button>
         </div>
     </div>
 
@@ -276,7 +327,7 @@
             <div class="voice-controls">
                 
                 <div class="quick-lang-container">
-                    <button class="btn-copy" onclick="copyNote()" title="Copy Note Content">📋 Copy Note (複製)</button>
+                    <button class="btn-copy" onclick="copyNote()" title="Copy Note Content">📋 Copy Note</button>
                     <div style="display:flex; align-items: center;">
                         <span class="lang-icon">🌐</span>
                         <select id="main-lang" class="small-select" onchange="syncLanguage('main')">
@@ -288,19 +339,37 @@
                     </div>
                 </div>
 
-                <button type="button" class="btn-voice" id="voiceBtn" onclick="toggleVoice()">
-                    🎤 Start Voice (開始錄音)
-                </button>
-                <div style="text-align: right; font-size: 0.9em; color: #555; margin-top: 8px; font-weight: bold;">
-                    Time left: <span id="display-timeout" style="color:#d63384; font-size:1.1em;">10</span> s
+                <div class="voice-action-area">
+                    <button type="button" class="btn-voice" id="voiceBtn" onclick="toggleVoice()">
+                        <span class="voice-icon-large" id="voiceIcon">🎤</span>
+                        <span class="voice-text" id="voiceText">Start<br>Voice</span>
+                    </button>
+                    
+                    <div class="voice-timer-display">
+                        <span style="font-size:0.8rem; color:#888;">Time Left:</span>
+                        <span style="color:#d63384; font-size:1.8rem; line-height:1.2;">
+                            <span id="display-timeout">10</span>s
+                        </span>
+                        <span id="recording-status-text" style="font-size:0.8rem; color:var(--danger-color); display:none;">Recording...</span>
+                    </div>
                 </div>
+
             </div>
         </div>
 
         <div class="footer-btns">
-            <button class="btn-main btn-save" id="saveBtn" onclick="saveToCloud()">💾 Save to Cloud (存檔至雲端)</button>
-            <button class="btn-main btn-view" onclick="viewExcel()">📊 View Excel (檢視 Excel)</button>
-            <button class="btn-main btn-drive" onclick="viewDriveFolder()">📂 View Photos (檢視雲端照片)</button>
+            <button class="btn-main btn-save" id="saveBtn" onclick="saveToCloud()">
+                <span class="btn-icon-big">💾</span>
+                Save Cloud<br>(存檔)
+            </button>
+            <button class="btn-main btn-view" onclick="viewExcel()">
+                <span class="btn-icon-big">📊</span>
+                View Excel<br>(檢視)
+            </button>
+            <button class="btn-main btn-drive" onclick="viewDriveFolder()">
+                <span class="btn-icon-big">📂</span>
+                View Photos<br>(相簿)
+            </button>
         </div>
     </div>
 
@@ -352,7 +421,7 @@
                 <p>✅ Cloud Paths are Locked (System Mode)</p>
             </div>
 
-            <button class="btn-main btn-save" onclick="saveSettings()">Save Settings (儲存設定)</button>
+            <button class="btn-main btn-save" style="aspect-ratio: auto; font-size: 1rem; padding: 12px;" onclick="saveSettings()">Save Settings (儲存設定)</button>
         </div>
     </div>
 
@@ -368,7 +437,6 @@
 
     let processedImageBase64 = ""; 
     let recognition;
-    // let currentLocation = ""; // <<< 已移除位置變數
     
     // 錄音狀態
     let isRecording = false; 
@@ -419,7 +487,7 @@
         applySettings(); 
     }
 
-    // ================= 設定功能 & 語言同步 (略過) =================
+    // ================= 設定功能 & 語言同步 =================
     function openSettings() {
         loadSettingsToUI();
         document.getElementById('settings-modal').style.display = 'flex';
@@ -492,7 +560,7 @@
         else tag.innerText = "Ratio: " + ratio.replace("/", ":");
     }
 
-    // ================= 圖片處理 (已移除 getLocation 呼叫) =================
+    // ================= 圖片處理 =================
     function triggerCam() { 
         document.getElementById('input-cam').click();
     }
@@ -559,7 +627,7 @@
         }
     }
 
-    // ================= 複製功能 (新增功能) =================
+    // ================= 複製功能 =================
     function copyNote() {
         const noteArea = document.getElementById('noteInput');
         
@@ -568,13 +636,10 @@
             return;
         }
 
-        // 使用現代瀏覽器的 Clipboard API
         navigator.clipboard.writeText(noteArea.value).then(() => {
-            // 由於複製不會顯示狀態，我們使用 showStatus 彈窗來提醒使用者
             showStatus('success', 'Copied!', '備註內容已複製到剪貼簿。');
             setTimeout(() => { closeStatusModal(); }, 1500); 
         }).catch(err => {
-            // 舊版瀏覽器或非安全環境（非HTTPS）的備用方案
             noteArea.select();
             document.execCommand('copy');
             showStatus('success', 'Copied!', '備註內容已複製到剪貼簿 (Fallback)。');
@@ -582,7 +647,7 @@
         });
     }
 
-    // ================= 語音功能 (略過) =================
+    // ================= 語音功能 =================
     function toggleVoice() {
         if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
             alert("Browser not supported"); return;
@@ -604,8 +669,13 @@
 
         isRecording = true;
         isManualStop = false; 
-        document.getElementById('voiceBtn').classList.add('recording');
-        document.getElementById('voiceBtn').innerText = "🛑 Stop";
+        
+        // 更新按鈕 UI
+        const vBtn = document.getElementById('voiceBtn');
+        vBtn.classList.add('recording');
+        document.getElementById('voiceIcon').innerText = "🛑";
+        document.getElementById('voiceText').innerHTML = "Stop<br>Voice";
+        document.getElementById('recording-status-text').style.display = "block";
         
         // 建立快照
         snapshotText = document.getElementById('noteInput').value;
@@ -660,18 +730,15 @@
             
             if(currentSessionText.trim().length > 0) {
                 punctuationTimer = setTimeout(() => {
-                    // 計時器觸發：停頓1秒後切斷
                     recognition.stop(); 
                 }, 1000);
             }
         };
 
-        // 強制不中斷 & 自動重啟邏輯 (含補標點)
         recognition.onend = function() {
             if(punctuationTimer) clearTimeout(punctuationTimer);
 
             if (isRecording && !isManualStop && timeLeft > 0) {
-                // 檢查是否需要補標點
                 let currentVal = document.getElementById('noteInput').value.trim();
                 if(currentVal.length > 0) {
                     const lastChar = currentVal.slice(-1);
@@ -684,7 +751,6 @@
                     }
                 }
 
-                // 更新快照
                 snapshotText = document.getElementById('noteInput').value;
                 if(snapshotText.length > 0 && !snapshotText.endsWith(" ")) {
                     snapshotText += " "; 
@@ -713,8 +779,11 @@
         if(countdownInterval) clearInterval(countdownInterval);
         if(punctuationTimer) clearTimeout(punctuationTimer);
         
-        document.getElementById('voiceBtn').classList.remove('recording');
-        document.getElementById('voiceBtn').innerText = "🎤 Start Voice (開始錄音)";
+        const vBtn = document.getElementById('voiceBtn');
+        vBtn.classList.remove('recording');
+        document.getElementById('voiceIcon').innerText = "🎤";
+        document.getElementById('voiceText').innerHTML = "Start<br>Voice";
+        document.getElementById('recording-status-text').style.display = "none";
         
         const noteInput = document.getElementById('noteInput');
         noteInput.classList.remove('anim-red', 'anim-purple', 'anim-green');
@@ -748,7 +817,6 @@
 
     function saveToCloud() {
         const note = document.getElementById('noteInput').value;
-        
         const scriptUrl = `https://script.google.com/macros/s/${FIXED_SCRIPT_ID}/exec`;
 
         if(!processedImageBase64 && !note) {
@@ -759,7 +827,6 @@
         btn.disabled = true;
         showStatus('loading', 'Uploading...', '資料上傳中...');
 
-        // 僅傳送 note, image 和 folderId
         const data = { 
             note: note, 
             image: processedImageBase64, 
@@ -768,7 +835,9 @@
 
         fetch(scriptUrl, {
             method: 'POST',
-            body: JSON.stringify(data)
+            body: JSON.stringify(data),
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            redirect: 'follow'
         })
         .then(r => r.json())
         .then(res => {
