@@ -161,7 +161,7 @@
         .voice-controls { margin-top: 10px; }
         
         .quick-lang-container {
-            display: flex; justify-content: flex-end; align-items: center;
+            display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 5px;
         }
         .lang-icon { font-size: 1.2em; margin-right: 5px; }
@@ -174,8 +174,25 @@
             width: 100%; padding: 12px; border: none; border-radius: 8px; 
             background-color: #17a2b8; color: white; font-weight: bold; cursor: pointer;
             display: flex; justify-content: center; align-items: center; gap: 8px;
+            margin-bottom: 10px;
         }
         .btn-voice.recording { background-color: var(--danger-color); animation: pulse 1s infinite; }
+
+        /* 新增：複製按鈕樣式 */
+        .btn-copy {
+            background-color: #28a745; 
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
 
         .footer-btns { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; padding-bottom: 30px;}
         .btn-main { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; }
@@ -251,18 +268,7 @@
             <input type="file" id="input-cam" accept="image/*" capture="environment" class="hidden" onchange="handleFile(this)">
             <input type="file" id="input-gallery" accept="image/*" class="hidden" onchange="handleFile(this)">
         </div>
-        
-        <div class="card" id="location-card">
-            <span class="section-title">1.5. Location (位置紀錄)</span>
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-                <span id="location-display" style="font-weight: bold; color: var(--drive-color); flex-grow: 1; font-size: 0.95em;">
-                    📍 Waiting for location... (等待位置...)
-                </span>
-                <button class="btn-half" style="background-color: #00bcd4; color: white; max-width: 120px;" onclick="getLocation(true)">
-                    🌍 Get GPS
-                </button>
-            </div>
-        </div>
+
         <div class="card" id="note-card">
             <span class="section-title">2. Note (文字/語音)</span>
             <textarea id="noteInput" placeholder="After taking a photo, type here or use voice... (拍照後，在此輸入或使用語音)"></textarea>
@@ -270,13 +276,16 @@
             <div class="voice-controls">
                 
                 <div class="quick-lang-container">
-                    <span class="lang-icon">🌐</span>
-                    <select id="main-lang" class="small-select" onchange="syncLanguage('main')">
-                        <option value="cmn-Hant-TW">中文 (繁體)</option>
-                        <option value="en-US">English</option>
-                        <option value="ja-JP">日本語</option>
-                        <option value="hi-IN">हिन्दी (Hindi)</option>
-                    </select>
+                    <button class="btn-copy" onclick="copyNote()" title="Copy Note Content">📋 Copy Note (複製)</button>
+                    <div style="display:flex; align-items: center;">
+                        <span class="lang-icon">🌐</span>
+                        <select id="main-lang" class="small-select" onchange="syncLanguage('main')">
+                            <option value="cmn-Hant-TW">中文 (繁體)</option>
+                            <option value="en-US">English</option>
+                            <option value="ja-JP">日本語</option>
+                            <option value="hi-IN">हिन्दी (Hindi)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <button type="button" class="btn-voice" id="voiceBtn" onclick="toggleVoice()">
@@ -299,7 +308,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Settings (設定)</h3>
-                <button onclick="closeSettings()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+                <button onclick="closeSettings()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">×</button>
             </div>
             
             <div class="modal-group" style="background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px dashed #ccc;">
@@ -359,7 +368,7 @@
 
     let processedImageBase64 = ""; 
     let recognition;
-    let currentLocation = ""; // <<< 新增：儲存經緯度資訊
+    // let currentLocation = ""; // <<< 已移除位置變數
     
     // 錄音狀態
     let isRecording = false; 
@@ -381,8 +390,6 @@
             document.getElementById('login-screen').style.display = 'flex';
         }
         loadSettingsToUI();
-        // 首次載入時取得一次位置，避免拍照後才彈出授權
-        getLocation(); 
     };
 
     function checkLogin() {
@@ -485,55 +492,7 @@
         else tag.innerText = "Ratio: " + ratio.replace("/", ":");
     }
 
-    // ================= 輔助功能 - 取得位置 (新增功能) =================
-    function getLocation(isManual = false) {
-        const display = document.getElementById('location-display');
-        
-        // 如果是自動觸發且已經有位置了，就不重複取，除非是手動點擊
-        if (!isManual && currentLocation) return;
-
-        display.innerText = "📍 Acquiring GPS... (正在擷取位置...)";
-        display.style.color = "#ffc107"; // 警示色
-
-        if (!navigator.geolocation) {
-            display.innerText = "❌ Geolocation not supported (瀏覽器不支援)";
-            display.style.color = "var(--danger-color)";
-            currentLocation = "Geolocation not supported";
-            return;
-        }
-
-        // 瀏覽器 Geolocation API
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const lat = position.coords.latitude.toFixed(6);
-                const lon = position.coords.longitude.toFixed(6);
-                currentLocation = `${lat}, ${lon}`;
-                display.innerText = `✅ GPS: ${currentLocation}`;
-                display.style.color = "var(--drive-color)"; // 成功色
-            },
-            (error) => {
-                let errorMsg = "❌ GPS Error: ";
-                switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        errorMsg += "Permission Denied (拒絕授權)";
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        errorMsg += "Position Unavailable (無法取得位置)";
-                        break;
-                    case error.TIMEOUT:
-                        errorMsg += "Timeout (逾時)";
-                        break;
-                    default:
-                        errorMsg += error.message;
-                }
-                display.innerText = errorMsg;
-                display.style.color = "var(--danger-color)";
-                currentLocation = errorMsg; 
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } 
-        );
-    }
-    // ================= 圖片處理 =================
+    // ================= 圖片處理 (已移除 getLocation 呼叫) =================
     function triggerCam() { 
         document.getElementById('input-cam').click();
     }
@@ -542,10 +501,6 @@
     }
     function handleFile(input) {
         if (input.files && input.files[0]) {
-            // 在處理檔案時，嘗試獲取當前位置
-            getLocation(); 
-            // ---
-
             const file = input.files[0];
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -602,6 +557,29 @@
              container.className = ""; 
              container.style.aspectRatio = `${canvas.width} / ${canvas.height}`;
         }
+    }
+
+    // ================= 複製功能 (新增功能) =================
+    function copyNote() {
+        const noteArea = document.getElementById('noteInput');
+        
+        if (noteArea.value.trim() === "") {
+            alert("Note is empty, nothing to copy. (備註是空的，無法複製)");
+            return;
+        }
+
+        // 使用現代瀏覽器的 Clipboard API
+        navigator.clipboard.writeText(noteArea.value).then(() => {
+            // 由於複製不會顯示狀態，我們使用 showStatus 彈窗來提醒使用者
+            showStatus('success', 'Copied!', '備註內容已複製到剪貼簿。');
+            setTimeout(() => { closeStatusModal(); }, 1500); 
+        }).catch(err => {
+            // 舊版瀏覽器或非安全環境（非HTTPS）的備用方案
+            noteArea.select();
+            document.execCommand('copy');
+            showStatus('success', 'Copied!', '備註內容已複製到剪貼簿 (Fallback)。');
+            setTimeout(() => { closeStatusModal(); }, 1500);
+        });
     }
 
     // ================= 語音功能 (略過) =================
@@ -700,7 +678,6 @@
                     const marks = ["，", "。", ",", "."];
                     if(!marks.includes(lastChar)) {
                         const lang = document.getElementById('main-lang').value;
-                        // 優化: 暫時保留你原來的逗號，若要句號可改為 "。" 或 "."
                         const mark = lang.includes('en') ? ", " : "，"; 
                         currentVal += mark;
                         document.getElementById('noteInput').value = currentVal;
@@ -782,14 +759,12 @@
         btn.disabled = true;
         showStatus('loading', 'Uploading...', '資料上傳中...');
 
-        // <<< 修改：加入 currentLocation
+        // 僅傳送 note, image 和 folderId
         const data = { 
             note: note, 
             image: processedImageBase64, 
-            folderId: FIXED_FOLDER_ID,
-            location: currentLocation // 新增傳送位置
+            folderId: FIXED_FOLDER_ID
         };
-        // ------------------------------------
 
         fetch(scriptUrl, {
             method: 'POST',
@@ -803,11 +778,6 @@
             document.getElementById('preview-img').style.display = 'none';
             document.querySelector('.placeholder').style.display = 'block';
             applySettings();
-            
-            // 重設位置顯示
-            currentLocation = "";
-            document.getElementById('location-display').innerText = "📍 Waiting for location... (等待位置...)";
-            document.getElementById('location-display').style.color = "var(--drive-color)";
             
             setTimeout(() => { closeStatusModal(); }, 2000);
         })
