@@ -17,7 +17,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             background-color: var(--bg-color); 
             margin: 0; padding: 0;
-            display: flex; justify-content: center; height: 100vh;
+            display: flex; justify-content: center; min-height: 100vh;
         }
 
         #login-screen {
@@ -251,7 +251,18 @@
             <input type="file" id="input-cam" accept="image/*" capture="environment" class="hidden" onchange="handleFile(this)">
             <input type="file" id="input-gallery" accept="image/*" class="hidden" onchange="handleFile(this)">
         </div>
-
+        
+        <div class="card" id="location-card">
+            <span class="section-title">1.5. Location (位置紀錄)</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                <span id="location-display" style="font-weight: bold; color: var(--drive-color); flex-grow: 1; font-size: 0.95em;">
+                    📍 Waiting for location... (等待位置...)
+                </span>
+                <button class="btn-half" style="background-color: #00bcd4; color: white; max-width: 120px;" onclick="getLocation(true)">
+                    🌍 Get GPS
+                </button>
+            </div>
+        </div>
         <div class="card" id="note-card">
             <span class="section-title">2. Note (文字/語音)</span>
             <textarea id="noteInput" placeholder="After taking a photo, type here or use voice... (拍照後，在此輸入或使用語音)"></textarea>
@@ -337,24 +348,25 @@
     </div>
 
 <script>
-    // ================= 初始化 =================
+    // ================= 初始化與設定 (請更改 ID) =================
     const DEFAULT_PASS = "1234"; 
     
     // --- 這裡是你要求的寫死路徑 (FIXED PATHS) ---
-    // 我已經將你提供的連結轉換成對應的 ID 並固定於此。
-    const FIXED_SCRIPT_ID = "AKfycbwseWx2ioJ0K_jEqHvJQVeUGw65PGW8gsxvRiKs63DdXr-mGb-OeM324vwH-DL62ujm/exec";
-    const FIXED_SHEET_ID = "1LvIn4eRb8tzVOQfxiSwZIRnaiPD0zb2jrXsi0hP_2YA/edit?gid=0#gid=0";
+    // 請將你的 Google Apps Script ID 貼到 FIXED_SCRIPT_ID 變數
+    const FIXED_SCRIPT_ID = "AKfycbwseWx2ioJ0K_jEqHvJQVeUGw65PGW8gsxvRiKs63DdXr-mGb-OeM324vwH-DL62ujm";
+    const FIXED_SHEET_ID = "1LvIn4eRb8tzVOQfxiSwZIRnaiPD0zb2jrXsi0hP_2YA";
     const FIXED_FOLDER_ID = "13fk6iR1JP7mUrlhoQ4h9TsF_T6VUhe38";
 
     let processedImageBase64 = ""; 
     let recognition;
+    let currentLocation = ""; // <<< 新增：儲存經緯度資訊
     
     // 錄音狀態
     let isRecording = false; 
     let isManualStop = false; 
-    let voiceTimer = null;          
-    let countdownInterval = null;   
-    let punctuationTimer = null; 
+    let voiceTimer = null; 
+    let countdownInterval = null; 
+    let punctuationTimer = null;
     let timeLeft = 0; 
     let snapshotText = ""; 
 
@@ -369,6 +381,8 @@
             document.getElementById('login-screen').style.display = 'flex';
         }
         loadSettingsToUI();
+        // 首次載入時取得一次位置，避免拍照後才彈出授權
+        getLocation(); 
     };
 
     function checkLogin() {
@@ -398,7 +412,7 @@
         applySettings(); 
     }
 
-    // ================= 設定功能 & 語言同步 =================
+    // ================= 設定功能 & 語言同步 (略過) =================
     function openSettings() {
         loadSettingsToUI();
         document.getElementById('settings-modal').style.display = 'flex';
@@ -418,26 +432,7 @@
         }
         localStorage.setItem("cfg_lang", val);
     }
-
-    // 雖然現在寫死了，但保留此函數以防未來需要
-    function extractId(input) {
-        if (!input) return "";
-        input = input.trim();
-        if (input.includes("script.google.com")) {
-            const match = input.match(/\/s\/([a-zA-Z0-9-_]+)\/exec/);
-            return match ? match[1] : input;
-        }
-        if (input.includes("docs.google.com")) {
-            const match = input.match(/\/d\/([a-zA-Z0-9-_]+)/);
-            return match ? match[1] : input;
-        }
-        if (input.includes("drive.google.com")) {
-            const match = input.match(/\/folders\/([a-zA-Z0-9-_]+)/);
-            return match ? match[1] : input;
-        }
-        return input;
-    }
-
+    
     function saveSettings() {
         const newPass = document.getElementById('set-password').value;
         const timeout = document.getElementById('set-timeout').value;
@@ -461,7 +456,7 @@
     }
 
     function loadSettingsToUI() {
-        document.getElementById('set-password').value = localStorage.getItem("app_password");
+        document.getElementById('set-password').value = localStorage.getItem("app_password") || DEFAULT_PASS;
         document.getElementById('set-timeout').value = localStorage.getItem("cfg_timeout") || "10";
         document.getElementById('set-warning').value = localStorage.getItem("cfg_warning") || "3";
         const savedLang = localStorage.getItem("cfg_lang") || "cmn-Hant-TW";
@@ -490,11 +485,67 @@
         else tag.innerText = "Ratio: " + ratio.replace("/", ":");
     }
 
+    // ================= 輔助功能 - 取得位置 (新增功能) =================
+    function getLocation(isManual = false) {
+        const display = document.getElementById('location-display');
+        
+        // 如果是自動觸發且已經有位置了，就不重複取，除非是手動點擊
+        if (!isManual && currentLocation) return;
+
+        display.innerText = "📍 Acquiring GPS... (正在擷取位置...)";
+        display.style.color = "#ffc107"; // 警示色
+
+        if (!navigator.geolocation) {
+            display.innerText = "❌ Geolocation not supported (瀏覽器不支援)";
+            display.style.color = "var(--danger-color)";
+            currentLocation = "Geolocation not supported";
+            return;
+        }
+
+        // 瀏覽器 Geolocation API
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude.toFixed(6);
+                const lon = position.coords.longitude.toFixed(6);
+                currentLocation = `${lat}, ${lon}`;
+                display.innerText = `✅ GPS: ${currentLocation}`;
+                display.style.color = "var(--drive-color)"; // 成功色
+            },
+            (error) => {
+                let errorMsg = "❌ GPS Error: ";
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMsg += "Permission Denied (拒絕授權)";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMsg += "Position Unavailable (無法取得位置)";
+                        break;
+                    case error.TIMEOUT:
+                        errorMsg += "Timeout (逾時)";
+                        break;
+                    default:
+                        errorMsg += error.message;
+                }
+                display.innerText = errorMsg;
+                display.style.color = "var(--danger-color)";
+                currentLocation = errorMsg; 
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } 
+        );
+    }
     // ================= 圖片處理 =================
-    function triggerCam() { document.getElementById('input-cam').click(); }
-    function triggerGallery() { document.getElementById('input-gallery').click(); }
+    function triggerCam() { 
+        document.getElementById('input-cam').click();
+    }
+    function triggerGallery() { 
+        document.getElementById('input-gallery').click(); 
+    }
     function handleFile(input) {
         if (input.files && input.files[0]) {
+            // 在處理檔案時，嘗試獲取當前位置
+            getLocation(); 
+            // ---
+
             const file = input.files[0];
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -553,7 +604,7 @@
         }
     }
 
-    // ================= 語音功能 (修正：標點遺失問題) =================
+    // ================= 語音功能 (略過) =================
     function toggleVoice() {
         if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
             alert("Browser not supported"); return;
@@ -637,7 +688,7 @@
             }
         };
 
-        // 5. 強制不中斷 & 自動重啟邏輯 (含補標點)
+        // 強制不中斷 & 自動重啟邏輯 (含補標點)
         recognition.onend = function() {
             if(punctuationTimer) clearTimeout(punctuationTimer);
 
@@ -649,7 +700,8 @@
                     const marks = ["，", "。", ",", "."];
                     if(!marks.includes(lastChar)) {
                         const lang = document.getElementById('main-lang').value;
-                        const mark = lang.includes('en') ? ", " : "，";
+                        // 優化: 暫時保留你原來的逗號，若要句號可改為 "。" 或 "."
+                        const mark = lang.includes('en') ? ", " : "，"; 
                         currentVal += mark;
                         document.getElementById('noteInput').value = currentVal;
                     }
@@ -720,10 +772,6 @@
     function saveToCloud() {
         const note = document.getElementById('noteInput').value;
         
-        // --- 使用寫死的 Folder ID ---
-        const folderId = FIXED_FOLDER_ID;
-        
-        // --- 使用寫死的 Script ID ---
         const scriptUrl = `https://script.google.com/macros/s/${FIXED_SCRIPT_ID}/exec`;
 
         if(!processedImageBase64 && !note) {
@@ -734,7 +782,14 @@
         btn.disabled = true;
         showStatus('loading', 'Uploading...', '資料上傳中...');
 
-        const data = { note: note, image: processedImageBase64, folderId: folderId };
+        // <<< 修改：加入 currentLocation
+        const data = { 
+            note: note, 
+            image: processedImageBase64, 
+            folderId: FIXED_FOLDER_ID,
+            location: currentLocation // 新增傳送位置
+        };
+        // ------------------------------------
 
         fetch(scriptUrl, {
             method: 'POST',
@@ -748,6 +803,12 @@
             document.getElementById('preview-img').style.display = 'none';
             document.querySelector('.placeholder').style.display = 'block';
             applySettings();
+            
+            // 重設位置顯示
+            currentLocation = "";
+            document.getElementById('location-display').innerText = "📍 Waiting for location... (等待位置...)";
+            document.getElementById('location-display').style.color = "var(--drive-color)";
+            
             setTimeout(() => { closeStatusModal(); }, 2000);
         })
         .catch(e => {
@@ -760,18 +821,15 @@
     }
 
     function viewExcel() {
-        // --- 使用寫死的 Sheet ID ---
         const url = `https://docs.google.com/spreadsheets/d/${FIXED_SHEET_ID}/edit`;
         window.open(url, '_blank');
     }
 
     function viewDriveFolder() {
-        // --- 使用寫死的 Folder ID ---
         const folderId = FIXED_FOLDER_ID;
         if(folderId && folderId.trim() !== "") {
             window.open("https://drive.google.com/drive/folders/" + folderId, '_blank');
         } else {
-            // Fallback (理論上不會發生，因為已經寫死 ID 了)
             if(confirm("Folder ID not set. Open Google Drive Root?\n(尚未設定資料夾 ID，要開啟雲端硬碟根目錄嗎？)")) {
                 window.open("https://drive.google.com/drive/my-drive", '_blank');
             }
@@ -781,4 +839,3 @@
 
 </body>
 </html>
-
